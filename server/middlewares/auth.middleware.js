@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
-import userModel from "../models/user.model";
+import userModel from "../models/user.model.js";
 
-async function authorizeUser(req, res, next) {
+export async function authorizeUser(req, res, next) {
   let token = req.headers.authorization;
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -14,4 +14,4 @@ async function authorizeUser(req, res, next) {
     next();
   } catch (error) {}
 }
-authorizeUser();
+

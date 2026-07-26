@@ -1,12 +1,13 @@
-import userModel from "../models/user.model";
+import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "30d",
   });
 };
-async function registerUser(req, res) {
+export async function registerUser(req, res) {
   const { name, email, password } = req.body;
   try {
     const isAlreadyExists = await userModel.findOne({ email });
@@ -22,35 +23,44 @@ async function registerUser(req, res) {
       token,
     });
   } catch (error) {
-    return res.json({ message: error, success: false });
+    return res.json({ message: error.message, success: false });
   }
 }
 
-async function loginUser(req, res) {
+export async function loginUser(req, res) {
   const { email, password } = req.body;
   try {
     const user = await userModel.findOne({ email });
-    if (user) {
-      const ismatched = await bcrypt.compare(password, user.password);
-      if (ismatched) {
-        const token = generateToken(user._id);
-        return res
-          .status(200)
-          .json({
-            success: true,
-            token,
-            message: "User logged in successfully",
-          });
-      }
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
     }
-    return res.status(203).json({success:false, message: "Wrong password" });
+
+    const isMatched = await bcrypt.compare(password, user.password);
+
+    if (!isMatched) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    const token = generateToken(user._id);
+
+    return res.status(200).json({
+      success: true,
+      token,
+      message: "User logged in successfully",
+    });
 
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }
 }
 
-async function getUser(req,res){
+export async function getUser(req,res){
     try {
         const user = req.user
         return res.json({success:true, user})
@@ -59,5 +69,3 @@ async function getUser(req,res){
     }
 }
 
-
-module.exports = {registerUser,loginUser}
