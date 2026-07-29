@@ -10,7 +10,7 @@ export async function authorizeUser(req, res, next) {
     if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
-    req.user = user;
+    req.user = user; 
     next();
   } catch (error) {}
 }
