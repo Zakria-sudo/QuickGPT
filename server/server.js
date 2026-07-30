@@ -4,6 +4,7 @@ import cors from "cors"
 import connectDB from "./configs/db.js"
 import userRouter from './routes/user.route.js'
 import chatRouter from './routes/chat.route.js'
+import multer from 'multer'
 
 const app = express()
 
