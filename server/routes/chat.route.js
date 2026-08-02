@@ -8,8 +8,8 @@ chatRouter.post("/create",authorizeUser, createChat)
 chatRouter.get("/get",authorizeUser, getChat)
 chatRouter.delete("/delete", authorizeUser, deleteChat)
 
-chatRouter.post("/message", authorizeUser, generateMsg)
-chatRouter.post("generate-image", authorizeUser, generateImg)
+// chatRouter.post("/message", authorizeUser, generateMsg)
+// chatRouter.post("/generate-image", authorizeUser, generateImg)
 
 
 export default chatRouter

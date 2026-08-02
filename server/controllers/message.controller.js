@@ -1,12 +1,15 @@
 import chatModel from "../models/chat.model.js";
 import userModel from "../models/user.model.js";
-import ai from "../configs/gemini.js";
-import { uploadFile } from "../utils/uploadFile.js";
 import openai from "../configs/openai.js";
+import axios from "axios";
+import imagekit from "../configs/imagekit.js";
 
 export async function generateMsg(req, res) {
   try {
     const userId = req.user._id;
+    if(req.user.credits < 1){
+      return res.json({success:false, message:"Not enough Credits"})
+    }
     const { chatId, prompt } = req.body;
 
     const chat = await chatModel.findOne({ userId, _id: chatId });
@@ -73,62 +76,89 @@ export async function generateImg(req, res) {
       content: prompt,
       timestamp: Date.now(),
     });
+    
+    const encodedPrompt = encodeURIComponent(prompt)
+    const generatedImageUrl = `${process.env.IMAGEKIT_URL_ENDPOINT}/
+    ik-genimg-prompt-${encodedPrompt}/quickgpt/${Date.now()}.png?tr=w-800,h-800`
 
-    await chat.save();
+    const aiImageResponse = await axios.get(generatedImageUrl,{responseType:"arraybuffer"})
 
-    // Generate image
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-image",
-      contents: prompt,
-      config: {
-        responseModalities: ["TEXT", "IMAGE"],
-      },
-    });
+    const base64Image = `data:image/png;base64,${Buffer.from(aiImageResponse.data,"binary").toString("base64")}`
 
-    // Extract generated image
-    let imageBuffer = null;
+    const uploadResponse = await imagekit.upload({
+      file:base64Image,
+      fileName:`${Date.now()}.png`,
+      folder:"quickgpt"
+    })
 
-    for (const candidate of response.candidates ?? []) {
-      for (const part of candidate.content?.parts ?? []) {
-        if (part.inlineData?.data) {
-          imageBuffer = Buffer.from(part.inlineData.data, "base64");
-          break;
-        }
-      }
+     const reply = {
+       role:"assistant",
+       content:uploadResponse.url,
+       timestamp: Date.now(),
+       isImage: true,
+       isPublished
+     };
+     
+     chat.messages.push(reply)
+     await chat.save()
+     
+     await userModel.updateOne({_id:userId},{$inc:{credits:-2}})
+     res.json({ success: true, reply });
+    // await chat.save();
 
-      if (imageBuffer) break;
-    }
+    // // Generate image
+    // const response = await ai.models.generateContent({
+    //   model: "gemini-3.1-flash-image",
+    //   contents: prompt,
+    //   config: {
+    //     responseModalities: ["TEXT", "IMAGE"],
+    //   },
+    // });
 
-    if (!imageBuffer) {
-      return res.status(500).json({
-        success: false,
-        message: "No image returned by Gemini.",
-      });
-    }
+    // // Extract generated image
+    // let imageBuffer = null;
 
-    // Upload to ImageKit
-    const uploaded = await uploadFile(imageBuffer, `${Date.now()}.png`);
+    // for (const candidate of response.candidates ?? []) {
+    //   for (const part of candidate.content?.parts ?? []) {
+    //     if (part.inlineData?.data) {
+    //       imageBuffer = Buffer.from(part.inlineData.data, "base64");
+    //       break;
+    //     }
+    //   }
 
-    const reply = {
-      role: "assistant",
-      isImage: true,
-      content: uploaded.url,
-      timestamp: Date.now(),
-    };
+    //   if (imageBuffer) break;
+    // }
 
-    // Save assistant response
-    chat.messages.push(reply);
+    // if (!imageBuffer) {
+    //   return res.status(500).json({
+    //     success: false,
+    //     message: "No image returned by Gemini.",
+    //   });
+    // }
 
-    await chat.save();
+    // // Upload to ImageKit
+    // const uploaded = await uploadFile(imageBuffer, `${Date.now()}.png`);
 
-    // Deduct credits
-    await userModel.updateOne({ _id: userId }, { $inc: { credits: -2 } });
+    // const reply = {
+    //   role: "assistant",
+    //   isImage: true,
+    //   content: uploaded.url,
+    //   timestamp: Date.now(),
+    // };
 
-    return res.status(200).json({
-      success: true,
-      image: uploaded.url,
-      reply,
-    });
+    // // Save assistant response
+    // chat.messages.push(reply);
+
+    // await chat.save();
+
+    // // Deduct credits
+    // await userModel.updateOne({ _id: userId }, { $inc: { credits: -2 } });
+
+    // return res.status(200).json({
+    //   success: true,
+    //   image: uploaded.url,
+    //   reply,
+    // });
   } catch (error) {
     console.error("Image generation error:", error);
 
