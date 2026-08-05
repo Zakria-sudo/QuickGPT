@@ -6,6 +6,7 @@ import userRouter from './routes/user.route.js'
 import chatRouter from './routes/chat.route.js'
 import multer from 'multer'
 import messageRouter from './routes/message.route.js'
+import creditRouter from './routes/credit.route.js'
 
 const app = express()
 
@@ -20,6 +21,7 @@ app.get("/", (req,res)=>{
 app.use("/api/user", userRouter)
 app.use("/api/chat", chatRouter)
 app.use("/api/message", messageRouter)
+app.use("/api/credit", creditRouter)
 
 const PORT = process.env.PORT || '3000'
 app.listen(PORT,()=>{
