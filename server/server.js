@@ -7,10 +7,13 @@ import chatRouter from './routes/chat.route.js'
 import multer from 'multer'
 import messageRouter from './routes/message.route.js'
 import creditRouter from './routes/credit.route.js'
+import { stripeWebhook } from './controllers/webhooks.js'
 
 const app = express()
 
 await connectDB();
+
+app.post("/api/stripe", express.raw({type:"application/json"}), stripeWebhook)
 
 app.use(cors())
 app.use(express.json())
